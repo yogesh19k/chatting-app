@@ -3,12 +3,16 @@ import socket
 import concurrent.futures
 
 
-HOST = '139.162.161.211'  # The server's hostname or IP address
-PORT =  11988       # The port used by the server
+HOST = '192.168.0.6'  # The server's hostname or IP address
+PORT =  9999       # The port used by the server
+
 run=True
 
 def host_connect_and_bind():
     global HOST,PORT,s
+    # Yourid=str.encode(input("Enter you ID:"))
+    # Talk_to_id=str.encode(input("Enter the presons ID:"))
+
     try:
         s = socket.socket()
         print("socket created")
@@ -18,6 +22,8 @@ def host_connect_and_bind():
 
     try:
         s.connect((HOST, PORT))
+        s.sendall(str.encode(input("Enter you ID:")))
+        s.sendall(str.encode(input("Enter the presons ID:")))
         print(f"connected to{HOST}")
 
     except:
@@ -44,16 +50,17 @@ def sending():
             
 
 def recveing():
-    global s,run,f1,f2
+    global s,run,f1,f2quit
     # print("receving thread strated")
     while run:
         data=s.recv(1024).decode("utf-8")
         if data=="quit":
             if run:
-                print("connection closed.... Enter quit to exit\nYou:>",end="")
+                print("connection closed.... press Enter to Exit")
             run=False
             break
         else:
+            
             print("\nReply:>",data,"\nYou:>",end="")
 
 def main():
