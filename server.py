@@ -84,7 +84,7 @@ def accepting_connections():
 			 "setup_mode":True,
 			 "staring":True,			
 						}
-			#print(f"total conection{len(all_address)}")
+			
 		except:
 
 			print("Error accepting connections")
@@ -108,9 +108,7 @@ def m_executor():
 					if list_of_conn[person]["sendbuff"] !="" and (not list_of_conn[person]["setup_mode"]):
 					
 						if list_of_conn[person]["sendbuff"].decode("utf-8")=="quit":
-							list_of_conn[list_of_conn[person]["talk_to"]]["recevbuff"]=list_of_conn[person]["sendbuff"]
-							list_of_conn[person]["recevbuff"]=list_of_conn[person]["sendbuff"]
-							list_of_conn[person]["sendbuff"]=""
+							list_of_conn.pop(person)
 
 						
 						elif "28change28" in (list_of_conn[person]["sendbuff"]).decode("utf-8"):
@@ -144,7 +142,6 @@ def setup():
 			print("exception at setup",e)
 
 
-
 def console():
 	global s,all_address,all_connections,run,list_of_conn,f1,f2,f3,f4,f5,f6
 	print("console started")
@@ -176,6 +173,7 @@ def console():
 			elif comand=="clear":
 
 				for c in list_of_conn:
+					list_of_conn[c]["conn"].sendall(b"quit")
 					list_of_conn[c]["conn"].close()
 				
 				list_of_conn.clear()

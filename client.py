@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import socket
 import concurrent.futures
+import time
 
 
 HOST = '192.168.0.6'  # The server's hostname or IP address
@@ -12,8 +13,7 @@ talkid=None
 
 def host_connect_and_bind():
     global HOST,PORT,s
-    # Yourid=str.encode(input("Enter you ID:"))
-    # Talk_to_id=str.encode(input("Enter the presons ID:"))
+    
 
     try:
         s = socket.socket()
@@ -25,7 +25,6 @@ def host_connect_and_bind():
     try:
         s.connect((HOST, PORT))
         s.sendall(str.encode(input("Enter you ID:")))
-        # s.sendall(str.encode(input("Enter the presons ID:")))
         print(f"connected to{HOST}")
 
     except:
@@ -35,11 +34,8 @@ def host_connect_and_bind():
 
 def sending():
     global s,run,f1,f2,hold,talkid
-    # print("You:>",end="")
     datai="28change28"
-    # print("sending thread strated")
     while run:
-        # if msvcrt.kbhit():
     
         if(datai=="28change28"):
             print("SYSTEM:> Please enter the talk to ID:",end="")
@@ -53,6 +49,8 @@ def sending():
         if datai=="quit":
             s.sendall(str.encode(datai))
             run=False
+            time.sleep(2)
+            s.close()
             break
 
         if(datai!=""):
@@ -63,25 +61,21 @@ def sending():
 
 def recveing():
     global s,run,f1,f2,hold,talkid
-    # print("receving thread strated")
+ 
     while run:
         data=s.recv(1024).decode("utf-8")
         
-        # print(data)
+        
         if data=="quit":
             if run:
-                print("connection closed.... press Enter to Exit")
+                print("\nconnection closed.... press Enter to Exit")
             run=False
             break
         
-        # elif data=="28setup28":
-        #     print("\nSYSTEM:> Please enter the talk to ID:")
-        #     hold=False
-
 
         elif data=="28wait28":
             print("\nSYSTEM:> Please wait preson is not online",end="")
-        #     hold=True
+        
     
         elif data=="connected":
             
@@ -100,7 +94,7 @@ def main():
         f1=executor.submit(sending)
         f2=executor.submit(recveing)
     s.close()
-    print("end")
+    # print("end")
 
 
 main()
