@@ -97,9 +97,9 @@ def m_executor():
 		
 		try:
 			for person in list_of_conn:	
-			
+				
 				if (list_of_conn[person]["talk_to"] in list_of_conn) and (not list_of_conn[person]["conected"]):
-					# print("conecting")
+					
 					list_of_conn[person]["conn"].sendall(b"connected")
 					list_of_conn[person]["conected"]=True
 
@@ -109,17 +109,21 @@ def m_executor():
 					
 						if list_of_conn[person]["sendbuff"].decode("utf-8")=="quit":
 							list_of_conn.pop(person)
+							break
 
-						
 						elif "28change28" in (list_of_conn[person]["sendbuff"]).decode("utf-8"):
-							print("setup mode")
 							list_of_conn[person]["setup_mode"]=True
 
-						else:
+						elif list_of_conn[person]["talk_to"] in list_of_conn:
 							list_of_conn[list_of_conn[person]["talk_to"]]["recevbuff"]= str.encode(person +":>"+(list_of_conn[person]["sendbuff"]).decode("utf-8"))
 							list_of_conn[person]["sendbuff"]=""
-		except Exception as e :
-			print("exception at excicutor",e)
+
+						else:
+							list_of_conn[person]["recevbuff"]=b"SYSTEM:>person not online"
+							list_of_conn[person]["sendbuff"]=""
+							list_of_conn[person]["conected"]=False
+		except:
+			pass
 			
 def setup():
 	global list_of_conn,run,list_of_set_up_mode
@@ -167,9 +171,6 @@ def console():
 					print(f"{i+1})ID-Name:{val}  having IP:",list_of_conn[val]["add"],"  want to talk to ID:",list_of_conn[val]["talk_to"],"  Connection :",list_of_conn[val]["conected"],"   Setup_mode:",list_of_conn[val]["setup_mode"]    )
 
 
-				for v in all_connections:
-					print(v)
-
 			elif comand=="clear":
 
 				for c in list_of_conn:
@@ -177,6 +178,7 @@ def console():
 					list_of_conn[c]["conn"].close()
 				
 				list_of_conn.clear()
+				
 			elif comand=="check":
 				print("Active thread:",threading.active_count())
 				print("Console thread Alive:",f1.running())
@@ -208,7 +210,7 @@ def receving():
 	while run:
 		try:
 			for person in list_of_conn:
-				if list_of_conn[person]["conected"] and list_of_conn[person]["recevbuff"]!="":
+				if list_of_conn[person]["recevbuff"]!="":
 					list_of_conn[person]["conn"].setblocking(False)
 					try:
 						list_of_conn[person]["conn"].sendall(list_of_conn[person]["recevbuff"])
