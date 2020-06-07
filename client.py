@@ -10,9 +10,10 @@ PORT =  9999       # The port used by the server
 run=True
 hold=True
 talkid=None
+mlog=[]
 
 def host_connect_and_bind():
-    global HOST,PORT,s
+    global HOST,PORT,s,mlog
     
 
     try:
@@ -25,6 +26,14 @@ def host_connect_and_bind():
     try:
         s.connect((HOST, PORT))
         s.sendall(str.encode(input("Enter you ID:")))
+        s.sendall(b"28log28")
+        recv=(s.recv(1024).decode("utf-8"))
+        if recv!="28nolog28":
+            mlog=recv.split(" &:& ")
+        
+        for v in mlog:
+            print(v)
+
         print(f"connected to{HOST}")
 
     except:
@@ -80,7 +89,7 @@ def recveing():
             print(f"\nSYSTEM:>person not online but message will be sended when they come online\n You'r talking to {talkid}:>",end="")
         
         elif data=="28not28":
-            print("\nSYSTEM:> Preson is not system in tell him to join\n ",end="")
+            print(f"\nSYSTEM:> Preson is not system in tell him to join\n You'r talking to {talkid}:> ",end="")
     
         elif data=="connected":
             

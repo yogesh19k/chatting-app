@@ -10,7 +10,7 @@ import pickle
 all_connections = []
 all_address = []
 
-list_of_set_up_mode=["28change28"]
+list_of_set_up_mode=["28change28","28log28"]
 list_of_Conn_name_log=[]
 message_log={}
 temp=[]
@@ -85,6 +85,11 @@ def accepting_connections():
 			conn.setblocking(1)
 			
 			name=str(conn.recv(1024),"utf-8")
+			if name in list_of_conn:
+				list_of_conn[name]["conn"].sendall(b"Some one else connect with you name")
+				list_of_conn[name]["conn"].sendall(b"quit")
+				list_of_conn[name]["conn"].close()
+
 			details["staring"]=False
 			list_of_conn.update({name:details})
 			print(f"\nName ID:{name}    having ip:",details["add"],"   want to talk to ID:",details["talk_to"])
@@ -126,9 +131,11 @@ def m_executor():
 						if list_of_conn[person]["sendbuff"].decode("utf-8")=="quit":
 							list_of_conn.pop(person)
 							break
+							
 
-						elif "28change28" in (list_of_conn[person]["sendbuff"]).decode("utf-8"):
-							list_of_conn[person]["setup_mode"]=True
+						elif len(list(set(list_of_set_up_mode).intersection(set((((list_of_conn[person]["sendbuff"]).decode("utf-8")).strip()).split(" "))))):
+							if len((((list_of_conn[person]["sendbuff"]).decode("utf-8")).strip()).split(" ")):
+								list_of_conn[person]["setup_mode"]=True
 
 						elif list_of_conn[person]["talk_to"] in list_of_conn:
 							list_of_conn[list_of_conn[person]["talk_to"]]["recevbuff"]= str.encode(person +":>"+(list_of_conn[person]["sendbuff"]).decode("utf-8"))
@@ -138,7 +145,7 @@ def m_executor():
 							if list_of_conn[person]["talk_to"] not in message_log:
 								message_log.update({list_of_conn[person]["talk_to"]:[]})
 							
-							message_log[list_of_conn[person]["talk_to"]].append(str.encode(person +":>"+(list_of_conn[person]["sendbuff"]).decode("utf-8")))
+							message_log[list_of_conn[person]["talk_to"]].append(person +":>"+(list_of_conn[person]["sendbuff"]).decode("utf-8"))
 							if list_of_conn[person]["conected"]:
 								list_of_conn[person]["recevbuff"]=b"28wait28"
 							list_of_conn[person]["sendbuff"]=""
@@ -158,18 +165,24 @@ def setup():
 		try:
 			for person in list_of_conn:
 				if list_of_conn[person]["setup_mode"] and list_of_conn[person]["sendbuff"]!="":
-					
-					list_of_conn[person]["talk_to"]=((list_of_conn[person]["sendbuff"]).decode("utf-8")).split(" ")[-1]
-					list_of_conn[person]["sendbuff"]=""
-					list_of_conn[person]["conected"]=False
-					list_of_conn[person]["setup_mode"]=False
-					if (list_of_conn[person]["talk_to"] not in list_of_conn) and (list_of_conn[person]["talk_to"] in list_of_Conn_name_log) :
-						list_of_conn[person]["conn"].sendall(b"28wait28")
-					elif (list_of_conn[person]["talk_to"] not in list_of_conn) and (list_of_conn[person]["talk_to"] not in list_of_Conn_name_log) :
-						list_of_conn[person]["conn"].sendall(b"28not28")
-
-
-					
+					if "28change28" in (list_of_conn[person]["sendbuff"]).decode("utf-8"):
+						list_of_conn[person]["talk_to"]=((list_of_conn[person]["sendbuff"]).decode("utf-8")).split(" ")[-1]
+						list_of_conn[person]["sendbuff"]=""
+						list_of_conn[person]["conected"]=False
+						list_of_conn[person]["setup_mode"]=False
+						if (list_of_conn[person]["talk_to"] not in list_of_conn) and (list_of_conn[person]["talk_to"] in list_of_Conn_name_log) :
+							list_of_conn[person]["conn"].sendall(b"28wait28")
+						elif (list_of_conn[person]["talk_to"] not in list_of_conn) and (list_of_conn[person]["talk_to"] not in list_of_Conn_name_log) :
+							list_of_conn[person]["conn"].sendall(b"28not28")
+					elif "28log28" in (list_of_conn[person]["sendbuff"]).decode("utf-8"):
+						try:
+							list_of_conn[person]["conn"].sendall(str.encode(" &:& ".join(message_log[person])))
+							message_log.pop(person)
+						except:
+							list_of_conn[person]["conn"].sendall(b"28nolog28")
+						finally:
+							list_of_conn[person]["sendbuff"]=""
+							list_of_conn[person]["setup_mode"]=False
 
 		except Exception as e:
 			print("exception at setup",e)
@@ -217,10 +230,15 @@ def console():
 				for c in list_of_conn:
 					list_of_conn[c]["conn"].sendall(b"quit")
 					list_of_conn[c]["conn"].close()
-				
-				del list_of_Conn_name_log[:]
-				list_of_conn.clear()
 			
+				
+				list_of_conn.clear()
+			elif comand=="clear-clog":
+				del list_of_Conn_name_log[:]
+
+			elif comand=="clear-mlog":
+				message_log.clear()
+
 			elif "clear" in comand  and len(com)==2:
 
 				list_of_conn[com[-1]]["conn"].sendall(b"quit")
