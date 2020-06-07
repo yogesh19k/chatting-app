@@ -44,6 +44,9 @@ def sending():
             datai="28change28 "+datai
         else:
             datai=input()
+            if "28change28" in datai:
+                talkid=(datai).split(" ")[-1]
+                
         print(f"You'r talking to {talkid}:>",end="")
     
         if datai=="quit":
@@ -74,8 +77,10 @@ def recveing():
         
 
         elif data=="28wait28":
-            print("\nSYSTEM:> Please wait preson is not online",end="")
+            print(f"\nSYSTEM:>person not online but message will be sended when they come online\n You'r talking to {talkid}:>",end="")
         
+        elif data=="28not28":
+            print("\nSYSTEM:> Preson is not system in tell him to join\n ",end="")
     
         elif data=="connected":
             

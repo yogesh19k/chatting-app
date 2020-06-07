@@ -2,17 +2,33 @@ import socket
 import sys
 import concurrent.futures
 import threading
+import pickle
 # import msvcrt
 
-list_of_conn_active={}
+
 
 all_connections = []
 all_address = []
+
 list_of_set_up_mode=["28change28"]
+list_of_Conn_name_log=[]
+message_log={}
+temp=[]
+try:
+	with open('listofname.data', 'rb') as filehandle:
+		list_of_Conn_name_log = pickle.load(filehandle)
+	
+	with open('Mlog.data', 'rb') as filehandle:
+		message_log = pickle.load(filehandle)
+except:
+	pass
+
 list_of_conn={}
 crun=False
 run=True
 # Create a Socket ( connect two computers)
+
+
 
 def create_socket():
     try:
@@ -41,7 +57,7 @@ def bind_socket():
         bind_socket()
 
 def accepting_connections():
-	global run
+	global run,list_of_conn,list_of_Conn_name_log
 	
 	for c in list_of_conn:
 		list_of_conn[c]["conn"].close()
@@ -70,11 +86,11 @@ def accepting_connections():
 			
 			name=str(conn.recv(1024),"utf-8")
 			details["staring"]=False
-			# details["setup_mode"]=False
-			# details["sendbuff"]=b""
 			list_of_conn.update({name:details})
 			print(f"\nName ID:{name}    having ip:",details["add"],"   want to talk to ID:",details["talk_to"])
-			
+			if name not in list_of_Conn_name_log:
+				list_of_Conn_name_log.append(name)
+
 			details={"conn":None,
 			 "add":None,	
 			 "sendbuff":"",
@@ -118,8 +134,18 @@ def m_executor():
 							list_of_conn[list_of_conn[person]["talk_to"]]["recevbuff"]= str.encode(person +":>"+(list_of_conn[person]["sendbuff"]).decode("utf-8"))
 							list_of_conn[person]["sendbuff"]=""
 
+						elif list_of_conn[person]["talk_to"] in list_of_Conn_name_log:
+							if list_of_conn[person]["talk_to"] not in message_log:
+								message_log.update({list_of_conn[person]["talk_to"]:[]})
+							
+							message_log[list_of_conn[person]["talk_to"]].append(str.encode(person +":>"+(list_of_conn[person]["sendbuff"]).decode("utf-8")))
+							if list_of_conn[person]["conected"]:
+								list_of_conn[person]["recevbuff"]=b"28wait28"
+							list_of_conn[person]["sendbuff"]=""
+							list_of_conn[person]["conected"]=False
+
 						else:
-							list_of_conn[person]["recevbuff"]=b"SYSTEM:>person not online"
+							list_of_conn[person]["recevbuff"]=b"28not28"
 							list_of_conn[person]["sendbuff"]=""
 							list_of_conn[person]["conected"]=False
 		except:
@@ -137,8 +163,11 @@ def setup():
 					list_of_conn[person]["sendbuff"]=""
 					list_of_conn[person]["conected"]=False
 					list_of_conn[person]["setup_mode"]=False
-					if list_of_conn[person]["talk_to"] not in list_of_conn:
+					if (list_of_conn[person]["talk_to"] not in list_of_conn) and (list_of_conn[person]["talk_to"] in list_of_Conn_name_log) :
 						list_of_conn[person]["conn"].sendall(b"28wait28")
+					elif (list_of_conn[person]["talk_to"] not in list_of_conn) and (list_of_conn[person]["talk_to"] not in list_of_Conn_name_log) :
+						list_of_conn[person]["conn"].sendall(b"28not28")
+
 
 					
 
@@ -155,21 +184,33 @@ def console():
 		try:
 			print("Con>>",end="")
 			comand=input()
+			comand=comand.strip()
+			com=comand.split(" ")
 			if comand=="quit":
 				try:
+					with open('listofname.data', 'wb') as filehandle:
+						pickle.dump(list_of_Conn_name_log, filehandle)
+					
+					with open('Mlog.data', 'wb') as filehandle:
+						pickle.dump(message_log, filehandle)
+
 					for v in list_of_conn:
 						
 						list_of_conn[v]["conn"].sendall(b"quit")
-				except:
-					pass
+					
+				except Exception as e:
+					print("quiting problem",e)
+
 				run=False	
 				s.close()
+				
 
 			elif comand=="list":
 				print(f"Total no of connections:{len(list_of_conn)}")
 				for i,val in enumerate(list_of_conn):
 					print(f"{i+1})ID-Name:{val}  having IP:",list_of_conn[val]["add"],"  want to talk to ID:",list_of_conn[val]["talk_to"],"  Connection :",list_of_conn[val]["conected"],"   Setup_mode:",list_of_conn[val]["setup_mode"]    )
-
+				print(list_of_Conn_name_log)
+				print(message_log)
 
 			elif comand=="clear":
 
@@ -177,8 +218,15 @@ def console():
 					list_of_conn[c]["conn"].sendall(b"quit")
 					list_of_conn[c]["conn"].close()
 				
+				del list_of_Conn_name_log[:]
 				list_of_conn.clear()
-				
+			
+			elif "clear" in comand  and len(com)==2:
+
+				list_of_conn[com[-1]]["conn"].sendall(b"quit")
+				list_of_conn[com[-1]]["conn"].close()
+				list_of_conn.pop(com[-1])
+
 			elif comand=="check":
 				print("Active thread:",threading.active_count())
 				print("Console thread Alive:",f1.running())
@@ -195,7 +243,7 @@ def sending():
 		try:
 
 			for person in list_of_conn:
-				if (list_of_conn[person]["conected"] or list_of_conn[person]["setup_mode"]) and(not list_of_conn[person]["staring"] ):
+				if (not list_of_conn[person]["staring"] ):
 					list_of_conn[person]["conn"].setblocking(False)
 					try:
 						list_of_conn[person]["sendbuff"]=list_of_conn[person]["conn"].recv(1024)
@@ -233,8 +281,9 @@ def main():
 		f3=executor.submit(m_executor)
 		f4=executor.submit(sending)
 		f5=executor.submit(receving)
-		f1=executor.submit(console)
 		f6=executor.submit(setup)
+		f1=executor.submit(console)
+	
 
 
 	print("ending")
