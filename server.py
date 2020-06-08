@@ -3,6 +3,7 @@ import sys
 import concurrent.futures
 import threading
 import pickle
+import time
 # import msvcrt
 
 
@@ -14,6 +15,7 @@ list_of_set_up_mode=["28change28","28log28"]
 list_of_Conn_name_log=[]
 message_log={}
 temp=[]
+diff_time=60*5
 try:
 	with open('listofname.data', 'rb') as filehandle:
 		list_of_Conn_name_log = pickle.load(filehandle)
@@ -71,7 +73,8 @@ def accepting_connections():
 			 "talk_to":"",
 			 "conected":False,
 			 "setup_mode":True,
-			 "staring":True,		
+			 "staring":True,
+			 "lastm":None		
 						}
 	while run:
 		try:
@@ -82,17 +85,22 @@ def accepting_connections():
 			
 			details["conn"]=conn
 			details["add"]=address
+			details["lastm"]=time.time()
 			conn.setblocking(1)
 			
 			name=str(conn.recv(1024),"utf-8")
 			if name in list_of_conn:
-				list_of_conn[name]["conn"].sendall(b"Some one else connect with you name")
-				list_of_conn[name]["conn"].sendall(b"quit")
-				list_of_conn[name]["conn"].close()
+				try:
+					list_of_conn[name]["conn"].sendall(b"Some one else connect with you name")
+					list_of_conn[name]["conn"].sendall(b"quit")
+				except:
+					pass
+				finally:
+					list_of_conn[name]["conn"].close()
 
 			details["staring"]=False
 			list_of_conn.update({name:details})
-			print(f"\nName ID:{name}    having ip:",details["add"],"   want to talk to ID:",details["talk_to"])
+			print(f"\nName ID:{name}    having ip:",details["add"])
 			if name not in list_of_Conn_name_log:
 				list_of_Conn_name_log.append(name)
 
@@ -113,7 +121,7 @@ def accepting_connections():
 # Establish connection with a client (socket must be listening)
 
 def m_executor():
-	global list_of_conn,run,list_of_set_up_mode
+	global list_of_conn,run,list_of_set_up_mode,diff_time
 	while run:
 		
 		try:
@@ -124,39 +132,46 @@ def m_executor():
 					list_of_conn[person]["conn"].sendall(b"connected")
 					list_of_conn[person]["conected"]=True
 
+				
+					
+				elif list_of_conn[person]["sendbuff"] !="" and (not list_of_conn[person]["setup_mode"]):
+				  ########################################################################################################
+					if list_of_conn[person]["sendbuff"].decode("utf-8")=="quit":
+						list_of_conn.pop(person)
+						break
+				  #########################################################################################################		
+
+					elif len(list(set(list_of_set_up_mode).intersection(set((((list_of_conn[person]["sendbuff"]).decode("utf-8")).strip()).split(" "))))):
+						if len((((list_of_conn[person]["sendbuff"]).decode("utf-8")).strip()).split(" ")):
+							list_of_conn[person]["setup_mode"]=True
+
+					elif list_of_conn[person]["talk_to"] in list_of_conn:
+						list_of_conn[list_of_conn[person]["talk_to"]]["recevbuff"]= str.encode(person +":>"+(list_of_conn[person]["sendbuff"]).decode("utf-8"))
+						list_of_conn[person]["sendbuff"]=""
+
+					elif list_of_conn[person]["talk_to"] in list_of_Conn_name_log:
+						if list_of_conn[person]["talk_to"] not in message_log:
+							message_log.update({list_of_conn[person]["talk_to"]:[]})
+						
+						message_log[list_of_conn[person]["talk_to"]].append(person +":>"+(list_of_conn[person]["sendbuff"]).decode("utf-8"))
+						if list_of_conn[person]["conected"]:
+							list_of_conn[person]["recevbuff"]=b"28wait28"
+						list_of_conn[person]["sendbuff"]=""
+						list_of_conn[person]["conected"]=False
+
+					else:
+						list_of_conn[person]["recevbuff"]=b"28not28"
+						list_of_conn[person]["sendbuff"]=""
+						list_of_conn[person]["conected"]=False
+
+					list_of_conn[person]["lastm"]=time.time()
 				else:
-					
-					if list_of_conn[person]["sendbuff"] !="" and (not list_of_conn[person]["setup_mode"]):
-					
-						if list_of_conn[person]["sendbuff"].decode("utf-8")=="quit":
-							list_of_conn.pop(person)
-							break
-							
-
-						elif len(list(set(list_of_set_up_mode).intersection(set((((list_of_conn[person]["sendbuff"]).decode("utf-8")).strip()).split(" "))))):
-							if len((((list_of_conn[person]["sendbuff"]).decode("utf-8")).strip()).split(" ")):
-								list_of_conn[person]["setup_mode"]=True
-
-						elif list_of_conn[person]["talk_to"] in list_of_conn:
-							list_of_conn[list_of_conn[person]["talk_to"]]["recevbuff"]= str.encode(person +":>"+(list_of_conn[person]["sendbuff"]).decode("utf-8"))
-							list_of_conn[person]["sendbuff"]=""
-
-						elif list_of_conn[person]["talk_to"] in list_of_Conn_name_log:
-							if list_of_conn[person]["talk_to"] not in message_log:
-								message_log.update({list_of_conn[person]["talk_to"]:[]})
-							
-							message_log[list_of_conn[person]["talk_to"]].append(person +":>"+(list_of_conn[person]["sendbuff"]).decode("utf-8"))
-							if list_of_conn[person]["conected"]:
-								list_of_conn[person]["recevbuff"]=b"28wait28"
-							list_of_conn[person]["sendbuff"]=""
-							list_of_conn[person]["conected"]=False
-
-						else:
-							list_of_conn[person]["recevbuff"]=b"28not28"
-							list_of_conn[person]["sendbuff"]=""
-							list_of_conn[person]["conected"]=False
-		except:
-			pass
+					if time.time()-list_of_conn[person]["lastm"] >=diff_time:
+						list_of_conn[person]["recevbuff"]=b"28Alive???28"
+						list_of_conn[person]["lastm"]=time.time()
+		# except:
+		except Exception as e :
+			print("exception at at excecutor",e)
 			
 def setup():
 	global list_of_conn,run,list_of_set_up_mode
@@ -165,7 +180,15 @@ def setup():
 		try:
 			for person in list_of_conn:
 				if list_of_conn[person]["setup_mode"] and list_of_conn[person]["sendbuff"]!="":
+				
 					if "28change28" in (list_of_conn[person]["sendbuff"]).decode("utf-8"):
+					 #############################################################################################
+						if list_of_conn[person]["sendbuff"].decode("utf-8").split(" ")[-1]=="quit":
+							list_of_conn[c]["conn"].sendall(b"quit")
+							list_of_conn[c]["conn"].close()
+							list_of_conn.pop(person)
+							break
+				     ############################################################################################		
 						list_of_conn[person]["talk_to"]=((list_of_conn[person]["sendbuff"]).decode("utf-8")).split(" ")[-1]
 						list_of_conn[person]["sendbuff"]=""
 						list_of_conn[person]["conected"]=False
@@ -183,9 +206,10 @@ def setup():
 						finally:
 							list_of_conn[person]["sendbuff"]=""
 							list_of_conn[person]["setup_mode"]=False
-
-		except Exception as e:
-			print("exception at setup",e)
+		except:
+		# except Exception as e:
+		# 	print("exception at setup",e)
+			pass
 
 
 def console():
@@ -210,9 +234,10 @@ def console():
 					for v in list_of_conn:
 						
 						list_of_conn[v]["conn"].sendall(b"quit")
-					
-				except Exception as e:
-					print("quiting problem",e)
+				except:	
+				# except Exception as e:
+				# 	print("quiting problem",e)
+					pass
 
 				run=False	
 				s.close()
@@ -221,16 +246,19 @@ def console():
 			elif comand=="list":
 				print(f"Total no of connections:{len(list_of_conn)}")
 				for i,val in enumerate(list_of_conn):
-					print(f"{i+1})ID-Name:{val}  having IP:",list_of_conn[val]["add"],"  want to talk to ID:",list_of_conn[val]["talk_to"],"  Connection :",list_of_conn[val]["conected"],"   Setup_mode:",list_of_conn[val]["setup_mode"]    )
+					print(f"{i+1})ID-Name:{val}  having IP:",list_of_conn[val]["add"],"  want to talk to ID:",list_of_conn[val]["talk_to"],"  Connection :",list_of_conn[val]["conected"],"   Setup_mode:",list_of_conn[val]["setup_mode"])
 				print(list_of_Conn_name_log)
 				print(message_log)
+
 
 			elif comand=="clear":
 
 				for c in list_of_conn:
-					list_of_conn[c]["conn"].sendall(b"quit")
-					list_of_conn[c]["conn"].close()
-			
+					try:
+						list_of_conn[c]["conn"].sendall(b"quit")
+						list_of_conn[c]["conn"].close()
+					except:
+						pass
 				
 				list_of_conn.clear()
 			elif comand=="clear-clog":
@@ -240,10 +268,13 @@ def console():
 				message_log.clear()
 
 			elif "clear" in comand  and len(com)==2:
-
-				list_of_conn[com[-1]]["conn"].sendall(b"quit")
-				list_of_conn[com[-1]]["conn"].close()
-				list_of_conn.pop(com[-1])
+				try:
+					list_of_conn[com[-1]]["conn"].sendall(b"quit")
+					list_of_conn[com[-1]]["conn"].close()
+				except:
+					pass
+				finally:
+					list_of_conn.pop(com[-1])
 
 			elif comand=="check":
 				print("Active thread:",threading.active_count())
@@ -267,7 +298,10 @@ def sending():
 						list_of_conn[person]["sendbuff"]=list_of_conn[person]["conn"].recv(1024)
 						# print(list_of_conn[person]["sendbuff"])
 					except:
+					# except Exception as e :
+					# 	print("exception at at sending internal",e)
 						pass
+		# except:
 		except Exception as e :
 			print("exception at at sending",e)
 			pass
@@ -280,9 +314,19 @@ def receving():
 					list_of_conn[person]["conn"].setblocking(False)
 					try:
 						list_of_conn[person]["conn"].sendall(list_of_conn[person]["recevbuff"])
+						
+					except socket.error: 	#[WinError 10054] An existing connection was forcibly closed by the remote host
+						if list_of_conn[person]["recevbuff"].decode("utf-8") !="28Alive???28":
+							if list_of_conn[person]["talk_to"] not in message_log:
+								message_log.update({person:[]})
+
+							message_log[person].append(list_of_conn[person]["recevbuff"].decode("utf-8"))
+
+						list_of_conn.pop(person)
+
+					finally:
 						list_of_conn[person]["recevbuff"]=""
-					except:
-						pass
+		# except:
 		except Exception as e :
 			print("exception at recving",e)
 			pass

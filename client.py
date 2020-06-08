@@ -39,8 +39,6 @@ def host_connect_and_bind():
     except:
         print("connecting problem")
 
-
-
 def sending():
     global s,run,f1,f2,hold,talkid
     datai="28change28"
@@ -68,9 +66,6 @@ def sending():
         if(datai!=""):
             s.sendall(str.encode(datai))
 
-
-            
-
 def recveing():
     global s,run,f1,f2,hold,talkid
  
@@ -95,11 +90,10 @@ def recveing():
             
             print(f"\nSYSTEM:>connected\nYou'r talking to {talkid}:>",end="")
 
-
+        elif data=="28Alive???28":
+            pass
         else:
             print("\n\b\b",data,f"\nYou'r talking to {talkid}:>",end="")
-
-        
 
 def main():
     global f1,f2,s
@@ -110,9 +104,7 @@ def main():
     s.close()
     # print("end")
 
-
 main()
-
 
 
 
